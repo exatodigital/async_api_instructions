@@ -35,7 +35,7 @@ The async pattern consists of two distinct API calls:
 
 **Endpoint Example** (Pessoa Física):
 ```bash
-POST https://api.exato.digital/br/exato/background-check/pessoa-fisica.json?cpf=29481162877
+POST https://api.exato.digital/br/exato/background-check/pessoa-fisica.json?cpf=99999999999
 Header: token: YOUR-TOKEN-HERE
 ```
 
@@ -165,7 +165,7 @@ The API returns two fields for result type identification:
 ### PDF Report Details
 
 **PDF Password**: First 6 digits of issuer CNPJ
-- Default: `069751` (from CNPJ 06975199000150)
+- Default: `123875` (from CNPJ 12387530000113)
 
 **Download**: Binary download from `PdfUrl` field
 
@@ -247,13 +247,75 @@ curl --location 'https://api.exato.digital/br/exato/background-check/pessoa-fisi
   "ElapsedTimeInMilliseconds": 287000,
   "Date": "2025-11-05T16:24:14-03:00",
   "Result": {
-    "CPF": "29481162877",
-    "Nome": "João da Silva"
+    "ResultJson": "{\"bpc\":{\"data\":\"2025-11-05T16:11:43-03:00\",\"retorno\":{\"ocorrencias\":[],\"numero_ocorrencias\":0},\"validation_result_risk_indicator\":3},\"cgu_pep\":{\"data\":\"2025-11-05T16:11:44-03:00\",\"retorno\":{\"ocorrencias\":[],\"numero_ocorrencias\":0},\"validation_result_risk_indicator\":3},\"processos_judiciais\":{\"data\":\"2025-11-05T16:12:15-03:00\",\"retorno\":{\"processos\":[],\"total_processos\":0},\"validation_result_risk_indicator\":3}}"
   }
 }
 ```
 
-> **Note**: The `Result` field contains the complete data payload from all executed data sources. The structure shown above is simplified for brevity.
+**Important Fields:**
+
+- **`PdfUrl`** ⭐: URL to download the **Background Check PDF report** - this is the complete formatted report that should be used for analysis. Download and archive this file immediately.
+
+- **`Result.ResultJson`** ⭐: **Escaped JSON string** containing all raw data from executed data sources (Receita Federal, CNJ, CGU, PEP, etc.). **Parse this string to obtain the structured JSON object**. Always store this complete payload for compliance, audit trail, and potential reprocessing.
+
+- **`ValidationResultRiskIndicator`**: Overall risk assessment (`"green"`, `"amber"`, or `"red"`) based on all indicators found during execution.
+
+**Understanding ResultJson Structure:**
+
+The `ResultJson` field contains **blocks of data for each data source (subconsulta) executed** in the Background Check report. After parsing the escaped JSON string, you'll have an object where **each property is a different data source**:
+
+```json
+{
+  "receita_federal": {
+    "data": "2025-11-05T16:11:43-03:00",
+    "retorno": {},
+    "validation_result_risk_indicator": 3
+  },
+  "cgu_pep": {
+    "data": "2025-11-05T16:11:44-03:00",
+    "retorno": {},
+    "validation_result_risk_indicator": 3
+  },
+  "cgu_ceis": {
+    "data": "2025-11-05T16:11:45-03:00",
+    "retorno": {},
+    "validation_result_risk_indicator": 3
+  },
+  "cgu_cnep": {
+    "data": "2025-11-05T16:11:46-03:00",
+    "retorno": {},
+    "validation_result_risk_indicator": 3
+  },
+  "bcp": {
+    "data": "2025-11-05T16:11:47-03:00",
+    "retorno": {},
+    "validation_result_risk_indicator": 3
+  },
+  "cadastro": {
+    "data": "2025-11-05T16:11:48-03:00",
+    "retorno": {},
+    "validation_result_risk_indicator": 3
+  }
+}
+```
+
+> **Note**: Each block represents one data source executed during the Background Check. The example above shows 12 different data sources, but the actual number and types vary depending on the configured report.
+
+**Common data source blocks include:**
+- `receita_federal` - Situaçao na Receita Federal
+- `bpc` - BPC (Benefício de Prestação Continuada)
+- `cgu_pep` - PEP (Politically Exposed Person)
+- `cgu_ceis` - CEIS (Cadastro de Empresas Inidôneas e Suspensas)
+- `cgu_cnep` - CNEP (Cadastro Nacional de Empresas Punidas)
+- `cadastro` - Registration data (Cadastro Básico)
+- ... and many others depending on the configured report
+
+Each block contains:
+- `data` - Execution timestamp
+- `retorno` - Data returned from that specific data source
+- `validation_result_risk_indicator` - Risk indicator for that data source (1=red, 2=amber, 3=green)
+
+> **Important**: The structure and available data sources in `ResultJson` are variable and depend on the configured Background Check report. Not all reports execute the same data sources. Always check if a specific data source block exists before accessing it.
 
 ## API Catalog and Additional Resources
 
@@ -261,7 +323,7 @@ curl --location 'https://api.exato.digital/br/exato/background-check/pessoa-fisi
 - Full API catalog: https://api.exato.digital/swagger-ui/
 
 ### Help Center
-- Integration guide: https://help.exato.digital/pt/articles/5860451-informacoes-importantes-antes-da-sua-integracao
+- Integration guide: https://44616254.hs-sites.com/central-de-ajuda-exato-digital/informacoes-importantes-antes-da-sua-integracao
 
 > **Note**: Some help center articles may contain outdated authentication methods (query parameter token). Always use header-based token as shown in this document.
 
